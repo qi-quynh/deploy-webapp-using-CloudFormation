@@ -281,7 +281,7 @@ Resources:
           apt-get update -y
           sudo apt-get install nginx -y
           sudo service nginx start
-          echo "<html><head><title>Udagram</title></head><body><h1>Project: Deploy a high-availability web app using CloudFormation</h1></body></html>" > index.html
+          echo "<html><head><title>Udagram</title></head><body><h1>Udagram Project: Deploy a high-availability web app using CloudFormation</h1></body></html>" > index.html
           sudo cp index.html /var/www/html/
       ImageId: !Ref AMIId
       SecurityGroups:
