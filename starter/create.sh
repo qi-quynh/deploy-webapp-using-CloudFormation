@@ -1,0 +1,1 @@
+aws cloudformation update-stack --stack-name udagram-stack --template-body file://udagram.yml  --parameters file://params.json --capabilities "CAPABILITY_IAM" "CAPABILITY_NAMED_IAM" --region=us-east-1
