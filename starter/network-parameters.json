@@ -4,14 +4,6 @@
 		"ParameterValue": "UdagramProject"
 	},
 	{
-		"ParameterKey": "AMIId",
-		"ParameterValue": "ami-04a81a99f5ec58529"
-	},
-	{
-		"ParameterKey": "InstanceType",
-		"ParameterValue": "t3.medium"
-	},
-	{
 		"ParameterKey": "VPCIP",
 		"ParameterValue": "10.0.0.0/16"
 	},

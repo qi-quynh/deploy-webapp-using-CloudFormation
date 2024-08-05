@@ -1,0 +1,171 @@
+Description: 
+  QuynhLTD / Udacity
+  Deploy Infrastructure as Code (IAC) / Deploy a high-availability web app using CloudFormation
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+
+  AMIId:
+    Description: AMI ID
+    Type: String
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    AllowedValues:
+     - t2.micro
+     - t2.micro
+     - t2.medium
+     - t3.medium
+
+Resources:
+
+  MyServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: My server security group
+      VpcId: !ImportValue VPCOutput
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+  
+  MyLoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Load balancer security group 
+      VpcId: !ImportValue VPCOutput
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  MyIAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  MyIAMInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref MyIAMRole
+
+  MyAppLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: udagramwebapp
+      SecurityGroups:
+        - Ref: MyLoadBalancerSecurityGroup
+      Subnets:
+        - !ImportValue PublicSubnet1Output
+        - !ImportValue PublicSubnet2Output
+
+  MyAppTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      HealthCheckPath: /
+      Protocol: HTTP
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 10
+      HealthCheckTimeoutSeconds: 8
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+      VpcId: !ImportValue VPCOutput
+    
+  MyListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      Port: "80"
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: MyAppTargetGroup 
+      LoadBalancerArn:
+        Ref: MyAppLoadBalancer
+
+  MyListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Priority: 1
+      ListenerArn: !Ref "MyListener"
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref "MyAppTargetGroup"
+      Conditions:
+        - Field: path-pattern
+          Values: [/]
+
+  MyAppLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          apt-get update -y
+          sudo apt-get install nginx -y
+          sudo service nginx start
+          echo "<html><head><title>Udagram</title></head><body><h1>Udagram Project: Deploy a high-availability web app using CloudFormation</h1></body></html>" > index.html
+          sudo cp index.html /var/www/html/
+      ImageId: !Ref AMIId
+      SecurityGroups:
+        - Ref: MyServerSecurityGroup
+      IamInstanceProfile: !Ref MyIAMInstanceProfile
+      InstanceType: !Ref InstanceType
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sdk"
+          Ebs:
+            VolumeSize: "10"
+
+  MyAppAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      LaunchConfigurationName:
+        Ref: MyAppLaunchConfiguration
+      TargetGroupARNs:
+        - Ref: MyAppTargetGroup
+      MaxSize: "5"
+      MinSize: "2"
+      HealthCheckType: ELB
+      VPCZoneIdentifier:
+        - !ImportValue PrivateSubnet2Output
+        - !ImportValue PrivateSubnet2Output
+      HealthCheckGracePeriod: 60    
+
+Outputs:
+  DNSNameOutput:
+    Description: DNS name of the load balancer
+    Value: !Sub "http://${MyAppLoadBalancer.DNSName}"
+    Export:
+      Name: MyDNSName

@@ -2,11 +2,12 @@
 # QuynhLTD
 
 ## Spin up instructions
-Create stack:
-aws cloudformation update-stack --stack-name udagram-stack --template-body file://udagram.yml  --parameters file://params.json --capabilities "CAPABILITY_IAM" "CAPABILITY_NAMED_IAM" --region=us-east-1
+bash create.sh network-stack network.yml network-parameters.json 
+bash create.sh udagram-stack udagram.yml udagram-parameters.json
 
 ## Tear down instructions
-aws cloudformation delete-stack --stack-name udagram-stack --region=us-east-1
+bash delete.sh network-stack
+bash delete.sh udagram-stack
 
 ## URL
-http://udagramwebapp-665928056.us-east-1.elb.amazonaws.com
+http://udagramwebapp-661371644.us-east-1.elb.amazonaws.com/
